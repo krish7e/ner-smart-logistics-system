@@ -36,6 +36,7 @@ import {
   riskBgClass,
 } from "@/lib/ner-data";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { useSimulation } from "@/lib/simulation";
 import { cn } from "@/lib/utils";
 
 const SEV_STYLES: Record<string, string> = {
@@ -46,7 +47,9 @@ const SEV_STYLES: Record<string, string> = {
 
 export function AlertsPanel({ compact = false }: { compact?: boolean }) {
   const [selected, setSelected] = useState<Alert | null>(null);
-  const list = compact ? ALERTS.slice(0, 4) : ALERTS;
+  const sim = useSimulation();
+  const all = sim.alerts;
+  const list = compact ? all.slice(0, 4 + (sim.simAlertIds.size ? sim.simAlertIds.size : 0)) : all;
 
   return (
     <Panel>
@@ -80,14 +83,21 @@ export function AlertsPanel({ compact = false }: { compact?: boolean }) {
                 <p className="truncate text-[11px] text-muted-foreground">{a.location}</p>
                 <p className="mt-0.5 text-[10px] text-muted-foreground/80">{a.time}</p>
               </div>
-              <span
-                className={cn(
-                  "shrink-0 rounded-md border px-2 py-0.5 text-[10px] font-semibold",
-                  SEV_STYLES[a.severity],
-                )}
-              >
-                {a.severity}
-              </span>
+              <div className="flex shrink-0 items-center gap-1">
+                {sim.simAlertIds.has(a.id) ? (
+                  <span className="shrink-0 rounded-md border border-cyan/40 bg-cyan/12 px-1.5 py-0.5 text-[10px] font-bold text-cyan">
+                    SIM
+                  </span>
+                ) : null}
+                <span
+                  className={cn(
+                    "shrink-0 rounded-md border px-2 py-0.5 text-[10px] font-semibold",
+                    SEV_STYLES[a.severity],
+                  )}
+                >
+                  {a.severity}
+                </span>
+              </div>
             </button>
           </li>
         ))}
@@ -145,11 +155,19 @@ export function Field({ label, value }: { label: string; value: string }) {
 }
 
 export function AiPredictionCard() {
-  const pct = 72;
+  const sim = useSimulation();
+  const pct = sim.active ? Math.min(95, Math.round(72 * (sim.config?.corridorMultiplier ?? 1))) : 72;
   const circumference = 2 * Math.PI * 42;
   return (
     <Panel>
-      <PanelHeader title="AI Prediction" right={<span className="text-[11px] text-cyan">Next 6 Hours</span>} />
+      <PanelHeader
+        title="AI Prediction"
+        right={
+          <span className="text-[11px] text-cyan">
+            Next 6 Hours{sim.active ? " · Simulated" : ""}
+          </span>
+        }
+      />
       <div className="flex items-center gap-4 p-4">
         <div className="relative h-28 w-28 shrink-0">
           <svg viewBox="0 0 100 100" className="h-full w-full -rotate-90">
@@ -183,6 +201,9 @@ export function AiPredictionCard() {
           </p>
           <p className="mt-2 text-[11px] text-muted-foreground">
             Corridor: <span className="font-semibold text-foreground">NH-37</span>
+            {sim.active ? (
+              <span className="ml-1.5 font-semibold text-warn">· simulation active, display only</span>
+            ) : null}
           </p>
           <Link
             to="/risk-prediction"
@@ -203,7 +224,8 @@ export function CorridorDetailCard({
   corridor: Corridor;
   onClose?: () => void;
 }) {
-  const score = corridorRisk(corridor);
+  const sim = useSimulation();
+  const score = sim.adjustCorridorScore(corridor.id, corridorRisk(corridor));
   const level = riskLevelFromScore(score);
   return (
     <div className="w-[19rem] rounded-xl border border-cyan/25 bg-surface/95 p-3 shadow-2xl backdrop-blur">
@@ -350,6 +372,8 @@ export function SmartInsightBanner() {
 
 export function MobileAppPreview() {
   const [accepted, setAccepted] = useState(false);
+  const sim = useSimulation();
+  const corridorRiskNow = sim.adjustCorridorScore("NH-37", 72);
   return (
     <Panel className="overflow-hidden">
       <PanelHeader title="Mobile App Preview" subtitle="Driver & field officer companion" />
@@ -395,7 +419,7 @@ export function MobileAppPreview() {
             </div>
             <div className="rounded-lg border border-danger/30 bg-danger/12 px-2 py-1.5">
               <p className="flex items-center justify-between text-[10px] font-semibold text-danger">
-                HIGH RISK CORRIDOR AHEAD <span>72/100</span>
+                HIGH RISK CORRIDOR AHEAD <span>{corridorRiskNow}/100</span>
               </p>
             </div>
             <div className="rounded-lg border border-border bg-surface/70 px-2 py-2">
