@@ -126,8 +126,20 @@ type SimulationValue = {
 const SimulationContext = createContext<SimulationValue | null>(null);
 
 export function SimulationProvider({ children }: { children: ReactNode }) {
-  const [event, setEvent] = useState<SimEvent>("off");
+  const [event, setEventState] = useState<SimEvent>("off");
   const [analyzing, setAnalyzing] = useState(false);
+
+  // Restore an active simulation after full page reloads (demo continuity).
+  useEffect(() => {
+    const v = window.sessionStorage.getItem("ner-sim-event");
+    if (v === "rain" || v === "landslide") setEventState(v);
+  }, []);
+
+  const setEvent = (e: SimEvent) => {
+    setEventState(e);
+    if (e === "off") window.sessionStorage.removeItem("ner-sim-event");
+    else window.sessionStorage.setItem("ner-sim-event", e);
+  };
 
   useEffect(() => {
     if (event === "off") {
@@ -151,7 +163,7 @@ export function SimulationProvider({ children }: { children: ReactNode }) {
       config,
       label: config?.label ?? null,
       setEvent,
-      toggle: (e) => setEvent((cur) => (cur === e ? "off" : e)),
+      toggle: (e) => setEvent(event === e ? "off" : e),
       reset: () => setEvent("off"),
       affectedCorridorIds,
       adjustCorridorScore: (corridorId, score) =>

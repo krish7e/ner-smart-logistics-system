@@ -3,6 +3,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { PageHeader, Panel, PanelHeader, StatTile } from "@/components/kit";
 import { AlertsPanel, Field } from "@/components/dashboard";
 import { INCIDENTS, type Incident } from "@/lib/ner-data";
+import { useSimulation } from "@/lib/simulation";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 
@@ -32,18 +33,39 @@ function IncidentsPage() {
   const [status, setStatus] = useState<"All" | "Active" | "Resolved">("Active");
   const [severity, setSeverity] = useState<"All" | "High" | "Moderate" | "Low">("All");
   const [selected, setSelected] = useState<Incident | null>(null);
+  const sim = useSimulation();
 
-  const rows = INCIDENTS.filter(
+  // Simulated incidents appear temporarily at the top of the register.
+  const simIncidents: Incident[] = (sim.config?.alerts ?? []).map((a) => ({
+    id: a.id,
+    type: a.type,
+    severity: a.severity,
+    location: a.location,
+    route: a.corridorId ?? "—",
+    impact: "Simulated scenario — display only",
+    reporter: "Simulation Engine",
+    time: a.time,
+    status: "Active",
+  }));
+  const allIncidents = [...simIncidents, ...INCIDENTS];
+
+  const rows = allIncidents.filter(
     (i) => (status === "All" || i.status === status) && (severity === "All" || i.severity === severity),
   );
 
   return (
     <div className="space-y-4">
       <PageHeader title="Incident & Alerts" subtitle="Disruption intake, triage and resolution tracking" />
+      {sim.active ? (
+        <p className="flex items-center gap-2 rounded-lg border border-warn/30 bg-warn/10 px-3 py-2 text-[11px] font-semibold text-warn">
+          <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-warn" />
+          Simulation active · {sim.label} · simulated incidents are marked with SIM- IDs and reset with the simulation
+        </p>
+      ) : null}
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <StatTile label="Active" value={String(INCIDENTS.filter((i) => i.status === "Active").length)} tone="danger" />
-        <StatTile label="High Severity" value={String(INCIDENTS.filter((i) => i.severity === "High").length)} tone="warn" />
+        <StatTile label="Active" value={String(allIncidents.filter((i) => i.status === "Active").length)} tone="danger" />
+        <StatTile label="High Severity" value={String(allIncidents.filter((i) => i.severity === "High").length)} tone="warn" />
         <StatTile label="Resolved (48h)" value={String(INCIDENTS.filter((i) => i.status === "Resolved").length)} tone="ok" />
         <StatTile label="Avg Resolution" value="6.4 hrs" tone="cyan" />
       </div>

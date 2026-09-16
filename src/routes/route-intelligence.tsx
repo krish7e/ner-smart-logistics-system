@@ -1,15 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
-import {
-  Brain,
-  CheckCircle2,
-  CloudRain,
-  Loader2,
-  Mountain,
-  RotateCcw,
-  Route as RouteIcon,
-  TriangleAlert,
-} from "lucide-react";
+import { Brain, CheckCircle2, Route as RouteIcon, TriangleAlert } from "lucide-react";
 import { PageHeader, Panel, PanelHeader, PrototypeNote, StatTile } from "@/components/kit";
 import { NerMap } from "@/components/NerMap";
 import {
@@ -23,7 +14,10 @@ import {
   riskBgClass,
   RISK_LABEL,
 } from "@/lib/ner-data";
+import { useSimulation } from "@/lib/simulation";
 import { cn } from "@/lib/utils";
+
+const CARGO_TYPES = Object.keys(CARGO_PRIORITY);
 
 export const Route = createFileRoute("/route-intelligence")({
   head: () => ({
@@ -44,39 +38,6 @@ export const Route = createFileRoute("/route-intelligence")({
   component: RouteIntelligencePage,
 });
 
-const CARGO_TYPES = Object.keys(CARGO_PRIORITY);
-
-/* ------------------------------------------------------------------ */
-/* Environmental simulation layer (front-end only, non-destructive)   */
-/* ------------------------------------------------------------------ */
-
-type SimEvent = "off" | "rain" | "landslide";
-
-/** Multipliers applied per route id for each simulated event. */
-const SIM_IMPACT: Record<Exclude<SimEvent, "off">, Record<string, number>> = {
-  rain: { A: 1.3, C: 1.2 },
-  landslide: { A: 1.4 },
-};
-
-const SIM_LABEL: Record<Exclude<SimEvent, "off">, string> = {
-  rain: "Heavy Rainfall",
-  landslide: "Landslide Incident",
-};
-
-function simulateRoutes(event: SimEvent) {
-  if (event === "off") return ROUTE_OPTIONS;
-  const impact = SIM_IMPACT[event];
-  return ROUTE_OPTIONS.map((r) => {
-    const mult = impact[r.id];
-    if (!mult) return r;
-    return {
-      ...r,
-      riskScore: Math.min(100, Math.round(r.riskScore * mult)),
-      disruptionProbability: Math.min(95, Math.round(r.disruptionProbability * mult)),
-    };
-  });
-}
-
 function RouteIntelligencePage() {
   const cities = HUBS.map((h) => h.name);
   const [origin, setOrigin] = useState("Guwahati");
@@ -84,22 +45,12 @@ function RouteIntelligencePage() {
   const [cargo, setCargo] = useState("Medical Supplies");
   const priority = CARGO_PRIORITY[cargo] ?? 50;
 
-  const [simEvent, setSimEvent] = useState<SimEvent>("off");
-  const [analyzing, setAnalyzing] = useState(false);
-
-  useEffect(() => {
-    if (simEvent === "off") return;
-    setAnalyzing(true);
-    const t = setTimeout(() => setAnalyzing(false), 900);
-    return () => clearTimeout(t);
-  }, [simEvent]);
+  const sim = useSimulation();
+  const { event: simEvent, analyzing } = sim;
 
   // Displayed routes: original data when off, temporary adjusted copy when on.
-  const displayed = useMemo(() => simulateRoutes(simEvent), [simEvent]);
-  const affectedIds = useMemo(
-    () => (simEvent === "off" ? new Set<string>() : new Set(Object.keys(SIM_IMPACT[simEvent]))),
-    [simEvent],
-  );
+  const displayed = sim.routes;
+  const affectedIds = sim.affectedRouteIds;
 
   const ranked = useMemo(() => rankRoutes(displayed, priority), [displayed, priority]);
   const best = ranked[0]!;
@@ -137,46 +88,11 @@ function RouteIntelligencePage() {
               priority.
             </PrototypeNote>
 
-            <div className="space-y-2 rounded-lg border border-border bg-background/40 p-3">
-              <p className="label-xs">Simulate Environmental Event</p>
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  onClick={() => setSimEvent(simEvent === "rain" ? "off" : "rain")}
-                  className={cn(
-                    "flex items-center justify-center gap-1.5 rounded-lg border px-2 py-2 text-[11px] font-medium transition-colors",
-                    simEvent === "rain"
-                      ? "border-warn/50 bg-warn/12 text-warn"
-                      : "border-border bg-background/40 text-muted-foreground hover:text-foreground",
-                  )}
-                >
-                  <CloudRain className="h-3.5 w-3.5" /> Heavy Rainfall
-                </button>
-                <button
-                  onClick={() => setSimEvent(simEvent === "landslide" ? "off" : "landslide")}
-                  className={cn(
-                    "flex items-center justify-center gap-1.5 rounded-lg border px-2 py-2 text-[11px] font-medium transition-colors",
-                    simEvent === "landslide"
-                      ? "border-danger/50 bg-danger/12 text-danger"
-                      : "border-border bg-background/40 text-muted-foreground hover:text-foreground",
-                  )}
-                >
-                  <Mountain className="h-3.5 w-3.5" /> Landslide
-                </button>
-              </div>
-              {analyzing ? (
-                <p className="flex items-center gap-1.5 text-[11px] text-cyan">
-                  <Loader2 className="h-3 w-3 animate-spin" /> Analyzing environmental impact...
-                </p>
-              ) : null}
-              {simEvent !== "off" && !analyzing ? (
-                <button
-                  onClick={() => setSimEvent("off")}
-                  className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-border bg-background/40 px-2 py-2 text-[11px] font-medium text-muted-foreground transition-colors hover:text-foreground"
-                >
-                  <RotateCcw className="h-3 w-3" /> Reset Simulation
-                </button>
-              ) : null}
-            </div>
+            <p className="rounded-lg border border-border bg-background/40 p-3 text-[11px] leading-relaxed text-muted-foreground">
+              Use the global <span className="font-semibold text-foreground">Simulate Environmental
+              Event</span> bar above the page to test Heavy Rainfall and Landslide scenarios across
+              the whole platform — routes, maps, alerts and predictions react together.
+            </p>
           </div>
         </Panel>
 
@@ -223,7 +139,7 @@ function RouteIntelligencePage() {
                     <p className="text-sm font-semibold">{r.label}</p>
                     {affectedIds.has(r.id) ? (
                       <span className="flex shrink-0 items-center gap-1 rounded-md border border-danger/40 bg-danger/12 px-1.5 py-0.5 text-[10px] font-bold text-danger">
-                        <TriangleAlert className="h-3 w-3" /> {SIM_LABEL[simEvent as Exclude<SimEvent, "off">].toUpperCase()}
+                        <TriangleAlert className="h-3 w-3" /> {(sim.label ?? "Simulated").toUpperCase()}
                       </span>
                     ) : recommended ? (
                       <span className="flex shrink-0 items-center gap-1 rounded-md border border-ok/35 bg-ok/12 px-1.5 py-0.5 text-[10px] font-bold text-ok">

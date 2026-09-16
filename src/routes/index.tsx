@@ -23,6 +23,7 @@ import {
   MobileAppPreview,
 } from "@/components/dashboard";
 import { CORRIDORS, DEMAND_7D, RISK_COLORS, type Corridor } from "@/lib/ner-data";
+import { useSimulation } from "@/lib/simulation";
 import {
   LineChart,
   Line,
@@ -66,6 +67,7 @@ const LAYER_KEYS: { key: keyof MapLayers; label: string }[] = [
 ];
 
 function Dashboard() {
+  const sim = useSimulation();
   const [layers, setLayers] = useState<MapLayers>({
     roadRisk: true,
     weather: false,
@@ -129,7 +131,7 @@ function Dashboard() {
         />
         <KpiCard
           label="Active Disruptions"
-          value="17"
+          value={String(17 + (sim.config?.alerts.length ?? 0))}
           status="High Priority"
           delta={{ value: "4 new today", up: false }}
           icon={<TriangleAlert className="h-4 w-4" />}
