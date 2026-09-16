@@ -6,6 +6,7 @@ import { NerMap } from "@/components/NerMap";
 import {
   CARGO_PRIORITY,
   HUBS,
+  ROUTE_OPTIONS,
   rankRoutes,
   recommendationReason,
   routeCost,
@@ -15,6 +16,8 @@ import {
 } from "@/lib/ner-data";
 import { useSimulation } from "@/lib/simulation";
 import { cn } from "@/lib/utils";
+
+const CARGO_TYPES = Object.keys(CARGO_PRIORITY);
 
 export const Route = createFileRoute("/route-intelligence")({
   head: () => ({
@@ -52,7 +55,7 @@ function RouteIntelligencePage() {
   const ranked = useMemo(() => rankRoutes(displayed, priority), [displayed, priority]);
   const best = ranked[0]!;
   const fastest = [...displayed].sort((a, b) => a.hours - b.hours)[0]!;
-  const originalBest = rankRoutes(sim.baseRoutes, priority)[0]!;
+  const originalBest = rankRoutes(ROUTE_OPTIONS, priority)[0]!;
   const recommendationSwitched = simEvent !== "off" && best.id !== originalBest.id;
   const [activeId, setActiveId] = useState(best.id);
   const active = displayed.find((r) => r.id === activeId) ?? best;
@@ -85,46 +88,11 @@ function RouteIntelligencePage() {
               priority.
             </PrototypeNote>
 
-            <div className="space-y-2 rounded-lg border border-border bg-background/40 p-3">
-              <p className="label-xs">Simulate Environmental Event</p>
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  onClick={() => setSimEvent(simEvent === "rain" ? "off" : "rain")}
-                  className={cn(
-                    "flex items-center justify-center gap-1.5 rounded-lg border px-2 py-2 text-[11px] font-medium transition-colors",
-                    simEvent === "rain"
-                      ? "border-warn/50 bg-warn/12 text-warn"
-                      : "border-border bg-background/40 text-muted-foreground hover:text-foreground",
-                  )}
-                >
-                  <CloudRain className="h-3.5 w-3.5" /> Heavy Rainfall
-                </button>
-                <button
-                  onClick={() => setSimEvent(simEvent === "landslide" ? "off" : "landslide")}
-                  className={cn(
-                    "flex items-center justify-center gap-1.5 rounded-lg border px-2 py-2 text-[11px] font-medium transition-colors",
-                    simEvent === "landslide"
-                      ? "border-danger/50 bg-danger/12 text-danger"
-                      : "border-border bg-background/40 text-muted-foreground hover:text-foreground",
-                  )}
-                >
-                  <Mountain className="h-3.5 w-3.5" /> Landslide
-                </button>
-              </div>
-              {analyzing ? (
-                <p className="flex items-center gap-1.5 text-[11px] text-cyan">
-                  <Loader2 className="h-3 w-3 animate-spin" /> Analyzing environmental impact...
-                </p>
-              ) : null}
-              {simEvent !== "off" && !analyzing ? (
-                <button
-                  onClick={() => setSimEvent("off")}
-                  className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-border bg-background/40 px-2 py-2 text-[11px] font-medium text-muted-foreground transition-colors hover:text-foreground"
-                >
-                  <RotateCcw className="h-3 w-3" /> Reset Simulation
-                </button>
-              ) : null}
-            </div>
+            <p className="rounded-lg border border-border bg-background/40 p-3 text-[11px] leading-relaxed text-muted-foreground">
+              Use the global <span className="font-semibold text-foreground">Simulate Environmental
+              Event</span> bar above the page to test Heavy Rainfall and Landslide scenarios across
+              the whole platform — routes, maps, alerts and predictions react together.
+            </p>
           </div>
         </Panel>
 
