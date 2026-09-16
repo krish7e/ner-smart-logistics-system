@@ -28,6 +28,7 @@ import { cn } from "@/lib/utils";
 import { LANGUAGES } from "@/lib/ner-data";
 import { AiAssistant } from "./AiAssistant";
 import { SimulationBar } from "./SimulationBar";
+import { GlobalSimulationOverlay } from "./GlobalSimulationOverlay";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -264,6 +265,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       </div>
 
       <AiAssistant />
+      <GlobalSimulationOverlay />
     </div>
   );
 }
