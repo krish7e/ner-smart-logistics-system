@@ -24,6 +24,7 @@ import {
   RISK_LABEL,
   riskBgClass,
 } from "@/lib/ner-data";
+import { useSimulation } from "@/lib/simulation";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/risk-prediction")({
@@ -45,7 +46,8 @@ export const Route = createFileRoute("/risk-prediction")({
 function RiskPage() {
   const [corridorId, setCorridorId] = useState("NH-37");
   const corridor = CORRIDORS.find((c) => c.id === corridorId)!;
-  const score = computeRiskScore(corridor.factors);
+  const sim = useSimulation();
+  const score = sim.adjustCorridorScore(corridor.id, computeRiskScore(corridor.factors));
   const level = riskLevelFromScore(score);
 
   const factorRows = (Object.keys(FACTOR_WEIGHTS) as (keyof typeof FACTOR_WEIGHTS)[]).map((k) => ({
@@ -86,6 +88,13 @@ function RiskPage() {
         These are prototype predictions computed from synthetic weather, terrain and incident inputs. They are
         not validated forecasts and must not be used for operational decisions.
       </PrototypeNote>
+
+      {sim.active && sim.affectedCorridorIds.has(corridor.id) ? (
+        <p className="flex items-center gap-2 rounded-lg border border-warn/30 bg-warn/10 px-3 py-2 text-[11px] font-semibold text-warn">
+          <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-warn" />
+          Simulation active · {sim.label} — {corridor.id} risk shown here is temporarily elevated and resets with the simulation
+        </p>
+      ) : null}
 
       <div className="grid grid-cols-1 gap-3 lg:grid-cols-4">
         <StatTile label="Corridor" value={corridor.name} tone="cyan" hint={corridor.label} />
