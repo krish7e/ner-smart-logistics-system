@@ -163,7 +163,7 @@ export function SimulationProvider({ children }: { children: ReactNode }) {
       config,
       label: config?.label ?? null,
       setEvent,
-      toggle: (e) => setEvent((cur) => (cur === e ? "off" : e)),
+      toggle: (e) => setEvent(event === e ? "off" : e),
       reset: () => setEvent("off"),
       affectedCorridorIds,
       adjustCorridorScore: (corridorId, score) =>
