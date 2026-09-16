@@ -27,6 +27,7 @@ import {
 import { cn } from "@/lib/utils";
 import { LANGUAGES } from "@/lib/ner-data";
 import { AiAssistant } from "./AiAssistant";
+import { SimulationBar } from "./SimulationBar";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -242,6 +243,8 @@ export function AppShell({ children }: { children: ReactNode }) {
             </div>
           </div>
         </header>
+
+        <SimulationBar />
 
         <main className="px-3 py-4 pb-24 sm:px-4 lg:px-5">{children}</main>
 
