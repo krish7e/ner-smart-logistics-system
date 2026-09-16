@@ -5,12 +5,12 @@ import {
   CORRIDORS,
   HUBS,
   VEHICLES,
-  ALERTS,
   RISK_COLORS,
   corridorRisk,
   riskLevelFromScore,
   type Corridor,
 } from "@/lib/ner-data";
+import { useSimulation } from "@/lib/simulation";
 
 export type MapLayers = {
   roadRisk: boolean;
@@ -68,6 +68,7 @@ export default function NerMapInner({
   showCorridors = true,
 }: MapProps) {
   const l = { ...DEFAULT_LAYERS, ...layers };
+  const sim = useSimulation();
 
   return (
     <MapContainer
@@ -89,7 +90,8 @@ export default function NerMapInner({
         l.roadRisk &&
         CORRIDORS.map((c) => {
           const blocked = blockedCorridorIds.includes(c.id);
-          const score = blocked ? 95 : corridorRisk(c);
+          const simAffected = sim.affectedCorridorIds.has(c.id);
+          const score = blocked ? 95 : sim.adjustCorridorScore(c.id, corridorRisk(c));
           const level = riskLevelFromScore(score);
           const highlighted = highlightCorridorIds.includes(c.id);
           return (
@@ -98,7 +100,7 @@ export default function NerMapInner({
               positions={c.path}
               pathOptions={{
                 color: RISK_COLORS[level],
-                weight: highlighted || blocked ? 7 : 4.5,
+                weight: highlighted || blocked ? 7 : simAffected ? 6.5 : 4.5,
                 opacity: highlighted || blocked ? 1 : 0.85,
                 dashArray: blocked ? "10 8" : undefined,
               }}
@@ -167,7 +169,7 @@ export default function NerMapInner({
         ))}
 
       {l.incidents &&
-        ALERTS.map((a) => (
+        sim.alerts.map((a) => (
           <CircleMarker
             key={a.id}
             center={[a.lat, a.lng]}
@@ -230,6 +232,28 @@ export default function NerMapInner({
             pathOptions={{ color: "#f97316", weight: 12, opacity: 0.14 }}
           />
         ))}
+
+      {/* Simulated environmental zones — temporary, non-destructive */}
+      {sim.config?.zones.map((z) => (
+        <CircleMarker
+          key={z.id}
+          center={[z.lat, z.lng]}
+          radius={40}
+          pathOptions={{
+            color: z.color,
+            fillColor: z.color,
+            fillOpacity: 0.1,
+            weight: 1.5,
+            dashArray: "4 4",
+          }}
+        >
+          <Tooltip>
+            <span className="text-xs font-semibold">{z.label}</span>
+            <br />
+            <span className="text-xs">Simulated zone · display only</span>
+          </Tooltip>
+        </CircleMarker>
+      ))}
     </MapContainer>
   );
 }
