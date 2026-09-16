@@ -139,7 +139,7 @@ function RouteIntelligencePage() {
                     <p className="text-sm font-semibold">{r.label}</p>
                     {affectedIds.has(r.id) ? (
                       <span className="flex shrink-0 items-center gap-1 rounded-md border border-danger/40 bg-danger/12 px-1.5 py-0.5 text-[10px] font-bold text-danger">
-                        <TriangleAlert className="h-3 w-3" /> {SIM_LABEL[simEvent as Exclude<SimEvent, "off">].toUpperCase()}
+                        <TriangleAlert className="h-3 w-3" /> {(sim.label ?? "Simulated").toUpperCase()}
                       </span>
                     ) : recommended ? (
                       <span className="flex shrink-0 items-center gap-1 rounded-md border border-ok/35 bg-ok/12 px-1.5 py-0.5 text-[10px] font-bold text-ok">
