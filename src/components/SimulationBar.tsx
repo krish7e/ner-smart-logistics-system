@@ -53,7 +53,7 @@ export function SimulationBar() {
 
         {sim.analyzing ? (
           <span className="flex items-center gap-1.5 text-[11px] text-cyan">
-            <Loader2 className="h-3 w-3 animate-spin" /> Analyzing environmental impact...
+            <Loader2 className="h-3 w-3 animate-spin" /> Analyzing live environmental data...
           </span>
         ) : sim.active ? (
           <span className="flex items-center gap-1.5 rounded-lg border border-warn/35 bg-warn/12 px-2.5 py-1.5 text-[11px] font-semibold text-warn">

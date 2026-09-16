@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { ALERTS, ROUTE_OPTIONS, type Alert, type RouteOption } from "@/lib/ner-data";
 
 /* ------------------------------------------------------------------ */
@@ -128,6 +128,7 @@ const SimulationContext = createContext<SimulationValue | null>(null);
 export function SimulationProvider({ children }: { children: ReactNode }) {
   const [event, setEventState] = useState<SimEvent>("off");
   const [analyzing, setAnalyzing] = useState(false);
+  const analysisTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Restore an active simulation after full page reloads (demo continuity).
   useEffect(() => {
@@ -135,33 +136,43 @@ export function SimulationProvider({ children }: { children: ReactNode }) {
     if (v === "rain" || v === "landslide") setEventState(v);
   }, []);
 
-  const setEvent = (e: SimEvent) => {
-    setEventState(e);
-    if (e === "off") window.sessionStorage.removeItem("ner-sim-event");
-    else window.sessionStorage.setItem("ner-sim-event", e);
-  };
+  const setEvent = useCallback((e: SimEvent) => {
+    if (analysisTimer.current) {
+      clearTimeout(analysisTimer.current);
+      analysisTimer.current = null;
+    }
 
-  useEffect(() => {
-    if (event === "off") {
+    setEventState(e);
+    if (e === "off") {
       setAnalyzing(false);
+      window.sessionStorage.removeItem("ner-sim-event");
       return;
     }
+
+    window.sessionStorage.setItem("ner-sim-event", e);
     setAnalyzing(true);
-    const t = setTimeout(() => setAnalyzing(false), 900);
-    return () => clearTimeout(t);
-  }, [event]);
+    analysisTimer.current = setTimeout(() => {
+      setAnalyzing(false);
+      analysisTimer.current = null;
+    }, 1500);
+  }, []);
+
+  useEffect(() => () => {
+    if (analysisTimer.current) clearTimeout(analysisTimer.current);
+  }, []);
 
   const value = useMemo<SimulationValue>(() => {
-    const config = event === "off" ? null : SIM_CONFIG[event];
+    // Hold all visual changes until analysis completes. Source data remains untouched.
+    const config = event === "off" || analyzing ? null : SIM_CONFIG[event];
     const affectedCorridorIds = new Set(config?.corridorIds ?? []);
     const affectedRouteIds = new Set(Object.keys(config?.routeImpact ?? {}));
 
     return {
       event,
-      active: event !== "off",
+      active: event !== "off" && !analyzing,
       analyzing,
       config,
-      label: config?.label ?? null,
+      label: event === "off" ? null : SIM_CONFIG[event].label,
       setEvent,
       toggle: (e) => setEvent(event === e ? "off" : e),
       reset: () => setEvent("off"),
@@ -185,7 +196,7 @@ export function SimulationProvider({ children }: { children: ReactNode }) {
         : ROUTE_OPTIONS,
       affectedRouteIds,
     };
-  }, [event, analyzing]);
+  }, [event, analyzing, setEvent]);
 
   return <SimulationContext.Provider value={value}>{children}</SimulationContext.Provider>;
 }
